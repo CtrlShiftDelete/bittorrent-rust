@@ -1,40 +1,63 @@
 use std::env;
-
+//use std::collections::HashMap;
 // use serde_bencode;
 use serde_json;
 #[allow(dead_code)]
-fn decode_string(encoded_value: &str) -> serde_json::Value {
-    // Example: "5:hello" -> "hello"
-    let colon_index = encoded_value.find(':').unwrap();
-    let number_string = &encoded_value[..colon_index];
-    let number = number_string.parse::<i64>().unwrap();
-    let string = &encoded_value[colon_index + 1..colon_index + 1 + number as usize];
-    return serde_json::Value::String(string.to_string());
-}
-
-fn decode_integer(encoded_value: &str) -> serde_json::Value {
-    let num_str = &encoded_value[1..encoded_value.len() - 1];
-    let num = num_str.parse::<i64>().unwrap();
-    return serde_json::Value::Number(num.into());
-}
-
-fn decode_list(mut encoded_value: &str) -> serde_json::Value {
-    // decode l5:helloi52ee
-    let mut res = Vec::new();
-    let colon_index = encoded_value.find(':').unwrap();
-    let number_string = &encoded_value[1..colon_index];
-    let number = number_string.parse::<i64>().unwrap();
-    let string = &encoded_value[colon_index + 1..colon_index + 1 + number as usize];
-    res.push(serde_json::Value::String(string.to_string()));
-    
-    encoded_value = &encoded_value[colon_index+1+number as usize..];
-    //let colon_index2 = encoded_value.find(':');
-    let num_str = &encoded_value[1..encoded_value.len() - 2];
-    let num = num_str.parse::<i64>().unwrap();
-    res.push(serde_json::Value::Number(serde_json::Number::from(num)));
-    return serde_json::Value::Array(res);
-    // return serde_json::Value::String(num.to_string());
-    // return serde_json::Value::Number(num.into());
+fn decode_query(encoded_value: &str) -> (serde_json::Value, usize) {
+    let first_char = encoded_value.chars().next().unwrap();
+    match first_char {
+        'i' => {
+            //decode integer
+            let end_index = encoded_value.find('e').unwrap();
+            let number_string = &encoded_value[1..end_index];
+            let number = number_string.parse::<i64>().unwrap();
+            (serde_json::Value::Number(number.into()), end_index)
+        }
+        '0'..='9' => {
+            //decode string
+            let colon_index = encoded_value.find(':').unwrap();
+            let number_string = &encoded_value[..colon_index];
+            let number = number_string.parse::<i64>().unwrap();
+            let string = &encoded_value[colon_index + 1..colon_index + 1 + number as usize];
+            (serde_json::Value::String(string.to_string()), colon_index + number as usize)
+        }
+        'l' => {
+            //decode list
+            let mut result = Vec::new();
+            let mut current_char_index = 1;
+            while current_char_index < encoded_value.len() {
+                let initial_char = encoded_value.chars().nth(current_char_index).unwrap();
+                if initial_char == 'e' {
+                    break;
+                }
+                let (decoded_value, next_index) = decode_query(&encoded_value[current_char_index..]);
+                result.push(decoded_value);
+                current_char_index += next_index + 1;
+            }
+            (serde_json::Value::Array(result), current_char_index)
+        }
+        'd' => {
+            //decode dictionary
+            //let mut result = HashMap::new();
+            let mut result = serde_json::Map::new();
+            let mut current_char_index = 1;
+            while current_char_index < encoded_value.len() {
+                let initial_char = encoded_value.chars().nth(current_char_index).unwrap();
+                if initial_char == 'e' {
+                    break;
+                }
+                let (decoded_key, next_index) = decode_query(&encoded_value[current_char_index..]);
+                current_char_index += next_index+1;
+                let (decoded_value, next_index) = decode_query(&encoded_value[current_char_index..]);
+                current_char_index += next_index+1;
+                result.insert(decoded_key.as_str().unwrap().to_string(), decoded_value);
+            }
+            (serde_json::Value::Object(result), current_char_index)
+        }
+        _ => {
+            (serde_json::Value::String("Panic: Invalid Input String".to_string()), 0)
+        }
+    }
 }
 
 
@@ -46,25 +69,8 @@ fn main() {
         let encoded_value = &args[2];
 
         // Determine the type of encoded value
-        let first_char = encoded_value.chars().next().unwrap();
-        println!("{}", first_char);
-        match first_char {
-            'i' => {
-                // Decode integer
-                let decoded_value = decode_integer(encoded_value);
-                println!("{}", decoded_value.to_string());
-            }
-            'l' => {
-                // Decode list
-                let decoded_value = decode_list(encoded_value);
-                println!("{}", decoded_value.to_string());
-            }
-            _ => {
-                // Decode string
-                let decoded_value = decode_string(encoded_value);
-                println!("{}", decoded_value.to_string());
-            }
-        }
+        let (decoded_query, _) = decode_query(encoded_value);
+        println!("{}",decoded_query.to_string());
     } else {
         println!("unknown command: {}", args[1])
     }

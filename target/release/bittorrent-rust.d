@@ -1,1 +1,1 @@
-D:\Work\my\ profile\bittorrent-rust\target\release\bittorrent-rust.exe: D:\Work\my\ profile\bittorrent-rust\src\main.rs
+D:\work\bittorrent-rust\target\release\bittorrent-rust.exe: D:\work\bittorrent-rust\src\main.rs
