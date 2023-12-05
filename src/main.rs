@@ -1,3 +1,5 @@
+extern crate serde_bytes;
+use sha1::{Digest, Sha1};
 use std::env;
 // use serde_derive::{Serialize, Deserialize};
 use serde::{Serialize, Deserialize};
@@ -18,7 +20,18 @@ struct Info {
     name: String,
     #[serde(rename="piece length")]
     piece_length: usize,
-    //pieces: Vec<u8>,
+    pieces: serde_bytes::ByteBuf,
+}
+
+fn calculate_info_hash(info: &Info) -> String {
+    let mut hasher = Sha1::new();
+    //convert info data to bytes first
+    let info_bytes = serde_bencode::to_bytes(info).expect("Could not convert to bytes");
+    hasher.update(info_bytes);
+    let hash_result = hasher.finalize();
+    //convert hash result to hexadecimal string
+    let hex_string: String = hash_result.iter().map(|byte| format!("{:02x}",byte)).collect();
+    hex_string.to_string()
 }
 
 fn main() {
@@ -36,7 +49,11 @@ fn main() {
         let torrent_data: Torrent = serde_bencode::from_bytes(&contents).expect("could not parse");
         println!("Tracker URL: {}", torrent_data.announce);
         println!("Length: {}", torrent_data.info.length);
-        //println!("{}", torrent_data);
+        // let pieces_string = String::from_utf8_lossy(&torrent_data.info.pieces);
+        // println!("Pieces: {}", pieces_string);
+
+        let info_hash = calculate_info_hash(&torrent_data.info);
+        println!("Info Hash: {}", info_hash);
     } else {
         println!("unknown command: {}", args[1])
     }
