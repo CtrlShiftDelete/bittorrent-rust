@@ -1,6 +1,7 @@
 extern crate serde_bytes;
 use sha1::{Digest, Sha1};
 use std::env;
+use hex;
 // use serde_derive::{Serialize, Deserialize};
 use serde::{Serialize, Deserialize};
 use std::fs;
@@ -49,11 +50,22 @@ fn main() {
         let torrent_data: Torrent = serde_bencode::from_bytes(&contents).expect("could not parse");
         println!("Tracker URL: {}", torrent_data.announce);
         println!("Length: {}", torrent_data.info.length);
-        // let pieces_string = String::from_utf8_lossy(&torrent_data.info.pieces);
-        // println!("Pieces: {}", pieces_string);
-
         let info_hash = calculate_info_hash(&torrent_data.info);
         println!("Info Hash: {}", info_hash);
+
+        println!("Piece Length: {}", torrent_data.info.piece_length);
+        // let pieces_string = String::from_utf8_lossy(&torrent_data.info.pieces);
+        // println!("Pieces: {}", pieces_string);
+        // println!("Pieces: {}", type_of(&torrent_data.info.pieces));
+        // println!("Pieces Hash: {}", calculate_pieces_hash(&torrent_data.info.pieces));
+        // let piece_hashes = calculate_piece_hashes(&torrent_data.info);
+        println!("Piece Hashes:");
+        torrent_data
+        .info
+        .pieces
+        .chunks(20)
+        .for_each(|hash| println!("{}", hex::encode(hash)));
+
     } else {
         println!("unknown command: {}", args[1])
     }
