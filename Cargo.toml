@@ -12,3 +12,4 @@ serde_bencode = "0.2.3"
 serde_bytes = "0.11.12" 
 sha-1 = "^0.9.6"
 hex = "0.4.3"
+reqwest = { version = "0.11.18", features = ["json", "blocking"] }
